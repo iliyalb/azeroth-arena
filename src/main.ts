@@ -1,47 +1,87 @@
-// import * as THREE from 'three';
-// import { GameScene } from './classes/GameScene';
+import * as THREE from 'three';
+import { GLTFLoader, GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import { OptionsMenu } from './classes/OptionsMenu';
 import { CreditsScreen } from './classes/CreditsScreen';
-// import { GameSettings } from './config/settings';
+import { GameSettings } from './config/settings';
 
-/*
 class ThreeScene {
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;
-  private cube: THREE.Mesh;
+  private character: THREE.Group | null = null;
+  private moveSpeed: number = 0.1;
+  private keys: { [key: string]: boolean } = {};
+  private ground: THREE.Mesh;
+  private settings: GameSettings;
 
-  constructor(container: HTMLElement) {
+  constructor(container: HTMLElement, settings: GameSettings) {
+    this.settings = settings;
     // Create scene
     this.scene = new THREE.Scene();
 
     // Set up camera
     this.camera = new THREE.PerspectiveCamera(
-      75,
+      this.settings.fov,
       window.innerWidth / window.innerHeight,
       0.1,
       1000
     );
-    this.camera.position.z = 5;
+    this.camera.position.set(0, 2, 5);
+    this.camera.lookAt(0, 0, 0);
 
     // Set up renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     container.appendChild(this.renderer.domElement);
 
-    // Create a cube
-    const geometry = new THREE.BoxGeometry();
-    const material = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
-    this.cube = new THREE.Mesh(geometry, material);
-    this.scene.add(this.cube);
+    // Create ground plane
+    const groundGeometry = new THREE.PlaneGeometry(20, 20);
+    const groundMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x808080,
+      roughness: 0.8,
+      metalness: 0.2
+    });
+    this.ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    this.ground.rotation.x = -Math.PI / 2;
+    this.scene.add(this.ground);
 
-    // Add lights
-    const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(1, 1, 1);
-    this.scene.add(light);
+    // Add point light
+    const pointLight = new THREE.PointLight(0xffffff, 100, 1000);
+    pointLight.position.set(0, 5, 0);
+    this.scene.add(pointLight);
 
+    // Add ambient light
     const ambientLight = new THREE.AmbientLight(0x404040);
     this.scene.add(ambientLight);
+
+    // Load character model
+    const loader = new GLTFLoader();
+    loader.load(
+      'assets/character/paladin.nordstorm.glb',
+      (gltf: GLTF) => {
+        this.character = gltf.scene;
+        if (this.character) {
+          this.scene.add(this.character);
+          // Center the character on the ground
+          this.character.position.y = 0;
+          // Rotate the character to face the other way
+          this.character.rotation.y = Math.PI;
+        }
+      },
+      undefined,
+      (error: unknown) => {
+        console.error('Error loading character:', error);
+      }
+    );
+
+    // Set up keyboard controls
+    window.addEventListener('keydown', (event) => {
+      this.keys[event.key.toLowerCase()] = true;
+    });
+
+    window.addEventListener('keyup', (event) => {
+      this.keys[event.key.toLowerCase()] = false;
+    });
 
     // Handle window resize
     window.addEventListener('resize', this.onWindowResize.bind(this));
@@ -56,32 +96,44 @@ class ThreeScene {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
   }
 
+  private updateCharacterMovement(): void {
+    if (!this.character) return;
+
+    const moveSpeed = this.moveSpeed;
+    const character = this.character;
+
+    if (this.keys['w']) character.position.z -= moveSpeed;
+    if (this.keys['s']) character.position.z += moveSpeed;
+    if (this.keys['a']) character.position.x -= moveSpeed;
+    if (this.keys['d']) character.position.x += moveSpeed;
+
+    // Update camera position to follow character
+    const cameraOffset = new THREE.Vector3(0, 2, 5);
+    this.camera.position.copy(character.position).add(cameraOffset);
+    this.camera.lookAt(character.position);
+  }
+
   private animate(): void {
     requestAnimationFrame(this.animate.bind(this));
-
-    // Rotate the cube
-    this.cube.rotation.x += 0.01;
-    this.cube.rotation.y += 0.01;
-
+    this.updateCharacterMovement();
     this.renderer.render(this.scene, this.camera);
   }
 }
-*/
+
 class MenuSystem {
   private splashScreen: HTMLImageElement = document.createElement('img');
   private menuVideo: HTMLVideoElement = document.createElement('video');
   private menuContainer: HTMLDivElement = document.createElement('div');
   private buttons: HTMLDivElement = document.createElement('div');
   private content: HTMLElement;
-  // private gameScene: GameScene | null = null;
   private optionsMenu: OptionsMenu | null = null;
   private creditsScreen: CreditsScreen | null = null;
-  //private settings: GameSettings;
+  private settings: GameSettings;
 
   constructor() {
     this.content = document.getElementById('content') as HTMLElement;
     if (!this.content) throw new Error('Content element not found');
-    // this.settings = GameSettings.getInstance();
+    this.settings = GameSettings.getInstance();
     this.initializeSplashScreen();
   }
 
@@ -208,26 +260,12 @@ class MenuSystem {
     });
   }
 
-  /*
-  private showMainMenu(): void {
-    if (this.optionsMenu) {
-      this.optionsMenu.hide();
-      this.optionsMenu = null;
-    }
-    if (this.creditsScreen) {
-      this.creditsScreen.hide();
-      this.creditsScreen = null;
-    }
-    this.menuContainer.style.opacity = '1';
-    this.buttons.style.opacity = '1';
-  } */
-
   private startGame(): void {
     this.menuContainer.style.opacity = '0';
     
     setTimeout(() => {
       this.menuContainer.style.display = 'none';
-      //this.gameScene = new GameScene(this.content);
+      new ThreeScene(this.content, this.settings);
     }, 700);
   }
 
