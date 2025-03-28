@@ -86,7 +86,7 @@ class MenuSystem {
 
   private initializeSplashScreen(): void {
     // Create splash screen
-    this.splashScreen.src = 'assets/menu.jpg';
+    this.splashScreen.src = '/azeroth-arena/assets/menu.jpg';
     this.splashScreen.style.cssText = `
       position: fixed;
       top: 0;
@@ -114,7 +114,7 @@ class MenuSystem {
     this.content.appendChild(this.menuContainer);
 
     // Create video background
-    this.menuVideo.src = 'assets/menu.mp4';
+    this.menuVideo.src = '/azeroth-arena/assets/menu.mp4';
     this.menuVideo.loop = true;
     this.menuVideo.muted = true;
     this.menuVideo.style.cssText = `
