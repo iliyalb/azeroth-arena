@@ -1,9 +1,10 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  base: '/azeroth/', // Update this to match your GitHub repository name
+  base: '/azeroth-arena/',
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
+    sourcemap: true
   }
 }); 
