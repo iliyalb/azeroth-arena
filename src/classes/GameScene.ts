@@ -21,7 +21,7 @@ export class GameScene {
   private setupLoadingManager(): void {
     this.loadingManager = new THREE.LoadingManager();
     
-    this.loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
+    this.loadingManager.onProgress = (_url, itemsLoaded, itemsTotal) => {
       const progress = itemsLoaded / itemsTotal;
       this.loadingScreen.updateProgress(progress);
     };

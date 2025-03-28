@@ -1,9 +1,10 @@
-import * as THREE from 'three';
-import { GameScene } from './classes/GameScene';
+// import * as THREE from 'three';
+// import { GameScene } from './classes/GameScene';
 import { OptionsMenu } from './classes/OptionsMenu';
 import { CreditsScreen } from './classes/CreditsScreen';
-import { GameSettings } from './config/settings';
+// import { GameSettings } from './config/settings';
 
+/*
 class ThreeScene {
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
@@ -65,28 +66,28 @@ class ThreeScene {
     this.renderer.render(this.scene, this.camera);
   }
 }
-
+*/
 class MenuSystem {
   private splashScreen: HTMLImageElement = document.createElement('img');
   private menuVideo: HTMLVideoElement = document.createElement('video');
   private menuContainer: HTMLDivElement = document.createElement('div');
   private buttons: HTMLDivElement = document.createElement('div');
   private content: HTMLElement;
-  private gameScene: GameScene | null = null;
+  // private gameScene: GameScene | null = null;
   private optionsMenu: OptionsMenu | null = null;
   private creditsScreen: CreditsScreen | null = null;
-  private settings: GameSettings;
+  //private settings: GameSettings;
 
   constructor() {
     this.content = document.getElementById('content') as HTMLElement;
     if (!this.content) throw new Error('Content element not found');
-    this.settings = GameSettings.getInstance();
+    // this.settings = GameSettings.getInstance();
     this.initializeSplashScreen();
   }
 
   private initializeSplashScreen(): void {
     // Create splash screen
-    this.splashScreen.src = '/azeroth-arena/assets/menu.jpg';
+    this.splashScreen.src = './assets/menu.jpg';
     this.splashScreen.style.cssText = `
       position: fixed;
       top: 0;
@@ -114,7 +115,7 @@ class MenuSystem {
     this.content.appendChild(this.menuContainer);
 
     // Create video background
-    this.menuVideo.src = '/azeroth-arena/assets/menu.mp4';
+    this.menuVideo.src = './assets/menu.mp4';
     this.menuVideo.loop = true;
     this.menuVideo.muted = true;
     this.menuVideo.style.cssText = `
@@ -154,7 +155,7 @@ class MenuSystem {
       text-align: center;
     `;
 
-    ['New Game', 'Options', 'Credits', 'Quit'].forEach((text, index) => {
+    ['New Game', 'Options', 'Credits', 'Quit'].forEach((text, _index) => {
       const button = document.createElement('div');
       button.textContent = text;
       button.style.cssText = buttonStyles;
@@ -207,6 +208,7 @@ class MenuSystem {
     });
   }
 
+  /*
   private showMainMenu(): void {
     if (this.optionsMenu) {
       this.optionsMenu.hide();
@@ -218,14 +220,14 @@ class MenuSystem {
     }
     this.menuContainer.style.opacity = '1';
     this.buttons.style.opacity = '1';
-  }
+  } */
 
   private startGame(): void {
     this.menuContainer.style.opacity = '0';
     
     setTimeout(() => {
       this.menuContainer.style.display = 'none';
-      this.gameScene = new GameScene(this.content);
+      //this.gameScene = new GameScene(this.content);
     }, 700);
   }
 
