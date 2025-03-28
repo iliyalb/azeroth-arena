@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader, GLTF } from 'three/addons/loaders/GLTFLoader.js';
+import { EXRLoader } from 'three/addons/loaders/EXRLoader.js';
 import { OptionsMenu } from './classes/OptionsMenu';
 import { CreditsScreen } from './classes/CreditsScreen';
 import { GameSettings } from './config/settings';
@@ -32,18 +33,52 @@ class ThreeScene {
     // Set up renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1;
     container.appendChild(this.renderer.domElement);
 
+    // Load skybox
+    const exrLoader = new EXRLoader();
+    exrLoader.load(
+      'assets/skybox/kloppenheim_02_puresky_1k.exr',
+      (texture) => {
+        this.scene.background = texture;
+      },
+      undefined,
+      (error) => {
+        console.error('Error loading skybox:', error);
+      }
+    );
+
     // Create ground plane
-    const groundGeometry = new THREE.PlaneGeometry(20, 20);
+    const groundGeometry = new THREE.PlaneGeometry(50, 50);
+    const textureLoader = new THREE.TextureLoader();
+    const grassTexture = textureLoader.load('assets/texture/grass.png');
+    grassTexture.wrapS = THREE.RepeatWrapping;
+    grassTexture.wrapT = THREE.RepeatWrapping;
+    grassTexture.repeat.set(10, 10); // Adjust these values to control texture tiling
     const groundMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x808080,
+      map: grassTexture,
       roughness: 0.8,
       metalness: 0.2
     });
     this.ground = new THREE.Mesh(groundGeometry, groundMaterial);
     this.ground.rotation.x = -Math.PI / 2;
     this.scene.add(this.ground);
+
+    // Add sun (directional light)
+    const sunLight = new THREE.DirectionalLight(0xffffff, 1);
+    sunLight.position.set(5, 5, 5);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.camera.near = 0.5;
+    sunLight.shadow.camera.far = 50;
+    sunLight.shadow.camera.left = -10;
+    sunLight.shadow.camera.right = 10;
+    sunLight.shadow.camera.top = 10;
+    sunLight.shadow.camera.bottom = -10;
+    this.scene.add(sunLight);
 
     // Add point light
     const pointLight = new THREE.PointLight(0xffffff, 100, 1000);
@@ -53,6 +88,10 @@ class ThreeScene {
     // Add ambient light
     const ambientLight = new THREE.AmbientLight(0x404040);
     this.scene.add(ambientLight);
+
+    // Enable shadows
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     // Load character model
     const loader = new GLTFLoader();
@@ -66,6 +105,13 @@ class ThreeScene {
           this.character.position.y = 0;
           // Rotate the character to face the other way
           this.character.rotation.y = Math.PI;
+          // Enable shadows for the character
+          this.character.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              child.castShadow = true;
+              child.receiveShadow = true;
+            }
+          });
         }
       },
       undefined,
