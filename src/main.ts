@@ -1,22 +1,87 @@
 import * as THREE from 'three';
-import { GLTFLoader, GLTF } from 'three/addons/loaders/GLTFLoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { EXRLoader } from 'three/addons/loaders/EXRLoader.js';
 import { OptionsMenu } from './classes/OptionsMenu';
 import { CreditsScreen } from './classes/CreditsScreen';
 import { GameSettings } from './config/settings';
 
 class ThreeScene {
-  private scene: THREE.Scene;
-  private camera: THREE.PerspectiveCamera;
-  private renderer: THREE.WebGLRenderer;
+  private scene!: THREE.Scene;
+  private camera!: THREE.PerspectiveCamera;
+  private renderer!: THREE.WebGLRenderer;
   private character: THREE.Group | null = null;
   private moveSpeed: number = 0.1;
   private keys: { [key: string]: boolean } = {};
-  private ground: THREE.Mesh;
+  private ground!: THREE.Mesh;
   private settings: GameSettings;
+  private loadingScreen!: HTMLDivElement;
+  private loadingProgress!: HTMLDivElement;
+  private loadingText!: HTMLDivElement;
+  private assetsLoaded: number = 0;
+  private totalAssets: number = 3; // skybox, grass texture, character model
 
   constructor(container: HTMLElement, settings: GameSettings) {
     this.settings = settings;
+    this.createLoadingScreen(container);
+    this.loadAssets(container);
+  }
+
+  private createLoadingScreen(container: HTMLElement): void {
+    this.loadingScreen = document.createElement('div');
+    this.loadingScreen.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    `;
+
+    this.loadingText = document.createElement('div');
+    this.loadingText.style.cssText = `
+      color: white;
+      font-size: 24px;
+      margin-bottom: 20px;
+      font-family: Arial, sans-serif;
+    `;
+    this.loadingText.textContent = 'Loading...';
+
+    this.loadingProgress = document.createElement('div');
+    this.loadingProgress.style.cssText = `
+      width: 300px;
+      height: 20px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid white;
+      border-radius: 10px;
+      overflow: hidden;
+    `;
+
+    const progressBar = document.createElement('div');
+    progressBar.style.cssText = `
+      width: 0%;
+      height: 100%;
+      background: white;
+      transition: width 0.3s ease;
+    `;
+    this.loadingProgress.appendChild(progressBar);
+
+    this.loadingScreen.appendChild(this.loadingText);
+    this.loadingScreen.appendChild(this.loadingProgress);
+    container.appendChild(this.loadingScreen);
+  }
+
+  private updateLoadingProgress(progress: number, assetName: string): void {
+    const progressBar = this.loadingProgress.firstChild as HTMLDivElement;
+    progressBar.style.width = `${progress * 100}%`;
+    this.loadingText.textContent = `Loading ${assetName}... ${Math.round(progress * 100)}%`;
+  }
+
+  private loadAssets(container: HTMLElement): void {
     // Create scene
     this.scene = new THREE.Scene();
 
@@ -43,30 +108,77 @@ class ThreeScene {
       'assets/skybox/kloppenheim_02_puresky_1k.exr',
       (texture) => {
         this.scene.background = texture;
+        this.assetLoaded('Skybox');
       },
       undefined,
       (error) => {
         console.error('Error loading skybox:', error);
+        this.assetLoaded('Skybox');
       }
     );
 
-    // Create ground plane
-    const groundGeometry = new THREE.PlaneGeometry(50, 50);
+    // Load grass texture
     const textureLoader = new THREE.TextureLoader();
-    const grassTexture = textureLoader.load('assets/texture/grass.png');
-    grassTexture.wrapS = THREE.RepeatWrapping;
-    grassTexture.wrapT = THREE.RepeatWrapping;
-    grassTexture.repeat.set(10, 10); // Adjust these values to control texture tiling
+    textureLoader.load(
+      'assets/texture/grass.png',
+      (texture) => {
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(10, 10);
+        this.createGround(texture);
+        this.assetLoaded('Ground Texture');
+      },
+      undefined,
+      (error) => {
+        console.error('Error loading grass texture:', error);
+        this.assetLoaded('Ground Texture');
+      }
+    );
+
+    // Load character model
+    const gltfLoader = new GLTFLoader();
+    gltfLoader.load(
+      'assets/character/paladin.nordstorm.glb',
+      (gltf) => {
+        this.character = gltf.scene;
+        if (this.character) {
+          this.scene.add(this.character);
+          this.character.position.y = 0;
+          this.character.rotation.y = Math.PI;
+          this.character.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              child.castShadow = true;
+              child.receiveShadow = true;
+            }
+          });
+        }
+        this.assetLoaded('Character Model');
+      },
+      undefined,
+      (error) => {
+        console.error('Error loading character:', error);
+        this.assetLoaded('Character Model');
+      }
+    );
+
+    // Set up lights and other scene elements
+    this.setupLights();
+    this.setupControls();
+  }
+
+  private createGround(texture: THREE.Texture): void {
+    const groundGeometry = new THREE.PlaneGeometry(50, 50);
     const groundMaterial = new THREE.MeshStandardMaterial({ 
-      map: grassTexture,
+      map: texture,
       roughness: 0.8,
       metalness: 0.2
     });
     this.ground = new THREE.Mesh(groundGeometry, groundMaterial);
     this.ground.rotation.x = -Math.PI / 2;
     this.scene.add(this.ground);
+  }
 
-    // Add sun (directional light)
+  private setupLights(): void {
     const sunLight = new THREE.DirectionalLight(0xffffff, 1);
     sunLight.position.set(5, 5, 5);
     sunLight.castShadow = true;
@@ -80,47 +192,18 @@ class ThreeScene {
     sunLight.shadow.camera.bottom = -10;
     this.scene.add(sunLight);
 
-    // Add point light
     const pointLight = new THREE.PointLight(0xffffff, 100, 1000);
     pointLight.position.set(0, 5, 0);
     this.scene.add(pointLight);
 
-    // Add ambient light
     const ambientLight = new THREE.AmbientLight(0x404040);
     this.scene.add(ambientLight);
 
-    // Enable shadows
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  }
 
-    // Load character model
-    const loader = new GLTFLoader();
-    loader.load(
-      'assets/character/paladin.nordstorm.glb',
-      (gltf: GLTF) => {
-        this.character = gltf.scene;
-        if (this.character) {
-          this.scene.add(this.character);
-          // Center the character on the ground
-          this.character.position.y = 0;
-          // Rotate the character to face the other way
-          this.character.rotation.y = Math.PI;
-          // Enable shadows for the character
-          this.character.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
-              child.castShadow = true;
-              child.receiveShadow = true;
-            }
-          });
-        }
-      },
-      undefined,
-      (error: unknown) => {
-        console.error('Error loading character:', error);
-      }
-    );
-
-    // Set up keyboard controls
+  private setupControls(): void {
     window.addEventListener('keydown', (event) => {
       this.keys[event.key.toLowerCase()] = true;
     });
@@ -129,11 +212,22 @@ class ThreeScene {
       this.keys[event.key.toLowerCase()] = false;
     });
 
-    // Handle window resize
     window.addEventListener('resize', this.onWindowResize.bind(this));
+  }
 
-    // Start animation loop
-    this.animate();
+  private assetLoaded(assetName: string): void {
+    this.assetsLoaded++;
+    this.updateLoadingProgress(this.assetsLoaded / this.totalAssets, assetName);
+
+    if (this.assetsLoaded === this.totalAssets) {
+      setTimeout(() => {
+        this.loadingScreen.style.opacity = '0';
+        setTimeout(() => {
+          this.loadingScreen.remove();
+          this.animate();
+        }, 500);
+      }, 500);
+    }
   }
 
   private onWindowResize(): void {
