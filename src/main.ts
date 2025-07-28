@@ -242,11 +242,27 @@ class ThreeScene {
     const moveSpeed = this.moveSpeed;
     const character = this.character;
 
-    if (this.keys['w']) character.position.z -= moveSpeed;
-    if (this.keys['s']) character.position.z += moveSpeed;
-    if (this.keys['a']) character.position.x -= moveSpeed;
-    if (this.keys['d']) character.position.x += moveSpeed;
+    let moveX = 0;
+    let moveZ = 0;
 
+    // Check for key presses and adjust movement vector
+    if (this.keys['w']) moveZ -= moveSpeed;
+    if (this.keys['s']) moveZ += moveSpeed;
+    if (this.keys['a']) moveX -= moveSpeed;
+    if (this.keys['d']) moveX += moveSpeed;
+
+    // Normalize the movement vector if both axes are being moved
+    const length = Math.sqrt(moveX * moveX + moveZ * moveZ);
+    if (length > 0) 
+    {
+        moveX /= length; // Normalize x
+        moveZ /= length; // Normalize z
+    }
+
+    // Apply movement
+    character.position.x += moveX * moveSpeed;
+    character.position.z += moveZ * moveSpeed;
+    
     // Update camera position to follow character
     const cameraOffset = new THREE.Vector3(0, 2, 5);
     this.camera.position.copy(character.position).add(cameraOffset);
